@@ -4,7 +4,7 @@ export async function inspectBoardingPDF(bytes:Uint8Array){
  if(!count||count>20)throw new Error('每份登机牌需为 1–20 页 PDF');
  return count;
 }
-export async function buildBoardingPDF(bytes:Uint8Array,url:string,labelPNG?:Uint8Array,pageIndex=0,background='#fcf5ea'){
+export async function buildBoardingPDF(bytes:Uint8Array,url:string,labelPNG?:Uint8Array,pageIndex=0){
  if(!/^https?:\/\//.test(url)||url.length>300)throw new Error('个人链接无效');
  const source=await PDFDocument.load(bytes);if(!source.getPageCount()||source.getPageCount()>20)throw new Error('每份登机牌需为 1–20 页 PDF');
  const out=await PDFDocument.create(),font=await out.embedFont(StandardFonts.Helvetica),bold=await out.embedFont(StandardFonts.HelveticaBold);
@@ -20,10 +20,7 @@ export async function buildBoardingPDF(bytes:Uint8Array,url:string,labelPNG?:Uin
   const position=rotation===0?{x:0,y:footer}:rotation===90?{x:0,y:footer+w}:rotation===180?{x:w,y:footer+h}:{x:h,y:footer};
   page.drawPage(image,{...position,width:w,height:h,rotate:degrees(-rotation)});
   // Match the reference: below SAME SKY, inside the main ticket. No added page band.
-  if(!/^#[a-f0-9]{6}$/i.test(background))throw new Error('无效背景色');
   const x=width*.35,boxWidth=width*.51,y=height*.013;
-  const fill=rgb(parseInt(background.slice(1,3),16)/255,parseInt(background.slice(3,5),16)/255,parseInt(background.slice(5,7),16)/255);
-  page.drawRectangle({x:x-2,y:height*.002,width:boxWidth+4,height:height*.070,color:fill});
   if(label)page.drawImage(label,{x,y:height*.043,width:Math.min(boxWidth,400),height:15});
   else page.drawText('AI CHECK-IN / Send this PDF to your Agent and say CHECK IN.',{x,y:height*.050,size:Math.min(10,height*.018),font:bold});
   if(label)page.drawText('AI CHECK-IN / Send this PDF to your Agent and say CHECK IN.',{x,y:height*.050,size:8,font,opacity:0});
