@@ -1,3 +1,4 @@
+import {readableTicket} from '@/lib/tokens';
 import {admin,eventForOwner,db,json,fail,sameOrigin,AppError,uid,now,ticket,hash,audit,resolveTicket} from '@/lib/server';
 export async function GET(){try{const user=await admin(),event=await eventForOwner(user.userId);const participants=await db().prepare('SELECT p.*, c.checked_at FROM people p LEFT JOIN checkins c ON c.person_id=p.id WHERE p.event_id=? ORDER BY p.created,p.code').bind(event.id).all();const logs=await db().prepare('SELECT action,detail,created FROM audits WHERE event_id=? ORDER BY created DESC LIMIT 20').bind(event.id).all();return json({event,people:participants.results.map(({token_hash,welcome_hash,...p}:any)=>p),logs:logs.results,user:user.displayName});}catch(e){return fail(e)}}
 export async function POST(req:Request){try{
@@ -30,7 +31,7 @@ export async function POST(req:Request){try{
   if(event.status!=='published')throw new AppError(409,'NOT_PUBLISHED','请先在会议设置中发布会议，再生成正式邀请');
   if(now()>=event.expires)throw new AppError(409,'INVITATION_EXPIRED','邀请有效期已结束，请先在会议设置中延长有效期');
   const list=await db().prepare('SELECT * FROM people WHERE event_id=? AND active=1 AND revoked=0').bind(event.id).all<any>();
-  const items=await Promise.all(list.results.filter((p:any)=>!body.ids||body.ids.includes(p.id)).map(async(p:any)=>{const token=await ticket(p.id,p.version);if(await hash(token)!==p.token_hash||await hash(await ticket(p.id,p.version,'welcome'))!==p.welcome_hash)throw new AppError(409,'INVITATION_KEY_CHANGED',`编号 ${p.code} 的邀请签名与后台记录不一致，请重新发放该邀请后下载；已有签到记录保留`);await resolveTicket(token);return {id:p.id,code:p.code,name:p.name,department:p.department,token,url:`${new URL(req.url).origin}/i/${token}`};}));
+  const items=await Promise.all(list.results.filter((p:any)=>!body.ids||body.ids.includes(p.id)).map(async(p:any)=>{const token=await ticket(p.id,p.version);if(await hash(token)!==p.token_hash||await hash(await ticket(p.id,p.version,'welcome'))!==p.welcome_hash)throw new AppError(409,'INVITATION_KEY_CHANGED',`编号 ${p.code} 的邀请签名与后台记录不一致，请重新发放该邀请后下载；已有签到记录保留`);await resolveTicket(token);return {id:p.id,code:p.code,name:p.name,department:p.department,token:readableTicket(token),url:`${new URL(req.url).origin}/i/${readableTicket(token)}`};}));
   await audit(event.id,'导出 Agent 签到贴图',`${items.length} 人`);return json({event,items});
  }
  if(body.action==='export'){await audit(event.id,'导出签到记录');return json({ok:true});}

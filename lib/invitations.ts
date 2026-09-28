@@ -15,7 +15,7 @@ export async function invitationCanvas(person:any,event:any,origin:string){
  c.font='30px "Microsoft YaHei",sans-serif';textWrap(c,event.title,50,250,1700,40);
  c.font='bold 32px "Microsoft YaHei",sans-serif';c.fillText('把邀请函发给 Agent，说「签到」。',50,320);
  c.font='28px "Microsoft YaHei",sans-serif';textWrap(c,'仅在用户要求签到时，读取下方个人链接，按页面说明提交。系统确认成功后，返回一段文字和一个欢迎仪式链接。',50,382,1700,42);
- c.fillStyle='#111111';c.font='bold 27px sans-serif';c.fillText('个人邀请链接（必须完整读取）：',50,495);
+ c.fillStyle='#111111';c.font='bold 27px sans-serif';c.fillText('个人邀请链接（c- 编码，不区分大小写）：',50,495);
  const url=inviteURL(person,origin);let size=30;c.font=`${size}px monospace`;while(c.measureText(url).width>1700)c.font=`${--size}px monospace`;c.fillText(url,50,557);
  c.fillStyle='#56665d';c.font='26px "Microsoft YaHei",sans-serif';c.fillText('读取链接不会签到；无法提交时，可打开链接点击“确认签到”。',50,635);c.font='23px "Microsoft YaHei",sans-serif';c.fillText('个人邀请请一对一发送。拼贴后请保留链接完整，避免遮挡或裁切。',50,682);return canvas;
 }

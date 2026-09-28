@@ -1,3 +1,4 @@
+import {normalizeTicket} from '../lib/tokens.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const origin='http://localhost:5173';
@@ -14,9 +15,12 @@ assert(invites.every(p=>p.url===`${origin}/i/${p.token}`));
 const secondExport=await admin({action:'invitations',ids:[invites[0].id]});assert.equal(secondExport.items[0].token,invites[0].token);
 assert.equal((await request('/api/v1/checkins/me',{headers:{Authorization:'Bearer '+ 'A'.repeat(43)}})).d.code,'INVITATION_NOT_FOUND');
 const token=invites[0].token,headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json'};
+const legacy=normalizeTicket(token);assert.equal((await fetch(origin+'/i/'+legacy)).status,200);assert.equal((await request('/api/v1/checkins/me',{headers:{Authorization:`Bearer ${legacy}`}})).d.code,'NOT_CHECKED_IN');
+const aliases=[token,token.toUpperCase(),token.replaceAll('0','O').replaceAll('1','l'),legacy];
+for(const alias of aliases){const r=await fetch(origin+'/i/'+alias);assert((await r.text()).includes('验收张三'));}
 const page=await fetch(origin+'/i/'+token);assert.equal(page.status,200);assert((await page.text()).includes('验收张三'));
 assert.equal((await request('/api/v1/checkins/me',{headers})).d.code,'NOT_CHECKED_IN');
-const concurrent=await Promise.all(Array.from({length:12},()=>request('/api/v1/checkins',{method:'POST',headers,body:'{}'})));
+const concurrent=await Promise.all(Array.from({length:12},(_,i)=>request('/api/v1/checkins',{method:'POST',headers:{...headers,Authorization:`Bearer ${aliases[i%aliases.length]}`},body:'{}'})));
 assert.equal(concurrent.filter(x=>x.status===201).length,1);assert(concurrent.every(x=>[200,201].includes(x.status)));assert.equal(new Set(concurrent.map(x=>x.d.checked_in_at)).size,1);
 const result=concurrent[0].d;assert.equal(typeof result.reply.text,'string');assert.equal(Object.keys(result.reply.link).length,2);
 const welcome=await fetch(result.reply.link.url);assert.equal(welcome.status,200);assert((await welcome.text()).includes('验收张三'));
@@ -32,5 +36,5 @@ assert.equal((await request('/api/v1/checkins',{method:'POST',headers:{Authoriza
 await admin({action:'settings',event:testEvent});
 const final=await request('/api/admin',{headers:auth});assert.equal(final.d.people.filter(p=>p.id===renewed.id&&p.checked_at).length,1);
 fs.mkdirSync('.sites-runtime',{recursive:true});fs.writeFileSync('.sites-runtime/qa.json',JSON.stringify({invite:origin+'/i/'+invites[3].token,welcome:newResult.d.reply.link.url,people:invites.length,checks:17},null,2));
-console.log('PASS: 20 integration checks. Preview-only records; production remains untouched.');
+console.log('PASS: 26 integration checks. Preview-only records; production remains untouched.');
 
