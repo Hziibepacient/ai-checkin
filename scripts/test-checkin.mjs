@@ -10,6 +10,9 @@ const testEvent={...event,title:'[本地验收] 季度复盘会',location:'本�
 await admin({action:'settings',event:testEvent});
 const prefix='QA'+Date.now();await admin({action:'import',rows:[{code:prefix+'A',name:'验收张三',department:'测试组'},{code:prefix+'B',name:'验收张三',department:'同名验证组'},{code:prefix+'C',name:'边界测试',department:'测试组'},{code:prefix+'D',name:'浏览器验收',department:'测试组'}]});
 const invites=(await admin({action:'invitations'})).items.filter(x=>x.code.startsWith(prefix));assert.equal(invites.length,4);assert.notEqual(invites[0].token,invites[1].token);
+assert(invites.every(p=>p.url===`${origin}/i/${p.token}`));
+const secondExport=await admin({action:'invitations',ids:[invites[0].id]});assert.equal(secondExport.items[0].token,invites[0].token);
+assert.equal((await request('/api/v1/checkins/me',{headers:{Authorization:'Bearer '+ 'A'.repeat(43)}})).d.code,'INVITATION_NOT_FOUND');
 const token=invites[0].token,headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json'};
 const page=await fetch(origin+'/i/'+token);assert.equal(page.status,200);assert((await page.text()).includes('验收张三'));
 assert.equal((await request('/api/v1/checkins/me',{headers})).d.code,'NOT_CHECKED_IN');
@@ -29,5 +32,5 @@ assert.equal((await request('/api/v1/checkins',{method:'POST',headers:{Authoriza
 await admin({action:'settings',event:testEvent});
 const final=await request('/api/admin',{headers:auth});assert.equal(final.d.people.filter(p=>p.id===renewed.id&&p.checked_at).length,1);
 fs.mkdirSync('.sites-runtime',{recursive:true});fs.writeFileSync('.sites-runtime/qa.json',JSON.stringify({invite:origin+'/i/'+invites[3].token,welcome:newResult.d.reply.link.url,people:invites.length,checks:17},null,2));
-console.log('PASS: 17 integration checks. Preview-only records; production remains untouched.');
+console.log('PASS: 20 integration checks. Preview-only records; production remains untouched.');
 
