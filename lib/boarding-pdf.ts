@@ -4,33 +4,35 @@ export async function inspectBoardingPDF(bytes:Uint8Array){
  if(!count||count>20)throw new Error('每份登机牌需为 1–20 页 PDF');
  return count;
 }
-export async function buildBoardingPDF(bytes:Uint8Array,url:string,labelPNG?:Uint8Array){
+export async function buildBoardingPDF(bytes:Uint8Array,url:string,labelPNG?:Uint8Array,pageIndex=0,background='#fcf5ea'){
  if(!/^https?:\/\//.test(url)||url.length>300)throw new Error('个人链接无效');
  const source=await PDFDocument.load(bytes);if(!source.getPageCount()||source.getPageCount()>20)throw new Error('每份登机牌需为 1–20 页 PDF');
  const out=await PDFDocument.create(),font=await out.embedFont(StandardFonts.Helvetica),bold=await out.embedFont(StandardFonts.HelveticaBold);
  const label=labelPNG?await out.embedPng(labelPNG):null;
- for(const original of source.getPages()){
+ if(!Number.isInteger(pageIndex)||pageIndex<0||pageIndex>=source.getPageCount())throw new Error('请选择有效的登机牌页码');
+ for(const original of [source.getPage(pageIndex)]){
   const crop=original.getCropBox(),rotation=((original.getRotation().angle%360)+360)%360;
   if(![0,90,180,270].includes(rotation))throw new Error('不支持此 PDF 页面旋转角度');
   const w=crop.width,h=crop.height,width=rotation%180?h:w,height=rotation%180?w:h;
   if(width<200)throw new Error('PDF 页面过窄，请使用正常尺寸的登机牌');
-  const footer=70,page=out.addPage([width,height+footer]);
+  const footer=0,page=out.addPage([width,height]);
   const image=await out.embedPage(original,{left:crop.x,bottom:crop.y,right:crop.x+w,top:crop.y+h});
   const position=rotation===0?{x:0,y:footer}:rotation===90?{x:0,y:footer+w}:rotation===180?{x:w,y:footer+h}:{x:h,y:footer};
   page.drawPage(image,{...position,width:w,height:h,rotate:degrees(-rotation)});
-  page.drawRectangle({x:0,y:0,width,height:footer,color:rgb(1,1,1)});
-  page.drawLine({start:{x:12,y:footer-1},end:{x:width-12,y:footer-1},thickness:.5,color:rgb(.8,.8,.8)});
-  if(label)page.drawImage(label,{x:14,y:43,width:Math.min(width-28,480),height:18});
-  else page.drawText('AI CHECK-IN',{x:14,y:48,size:12,font:bold});
-  const instruction='PERSONAL CHECK-IN LINK | Ask your Agent to check in using this URL.';
-  let instructionSize=9;while(font.widthOfTextAtSize(instruction,instructionSize)>width-28)instructionSize-=.25;
-  page.drawText(instruction,{x:14,y:29,size:instructionSize,font,color:rgb(.25,.25,.25)});
-  let size=12;while(font.widthOfTextAtSize(url,size)>width-28)size-=.25;
-  if(size<5)throw new Error('PDF 太窄，无法清晰放下个人链接，请换用横版登机牌');
-  page.drawText(url,{x:14,y:12,size,font,color:rgb(.05,.2,.35)});
-  const link=out.context.obj({Type:'Annot',Subtype:'Link',Rect:[12,4,width-12,25],Border:[0,0,0],A:{Type:'Action',S:'URI',URI:PDFString.of(url)}});
+  // Match the reference: below SAME SKY, inside the main ticket. No added page band.
+  if(!/^#[a-f0-9]{6}$/i.test(background))throw new Error('无效背景色');
+  const x=width*.35,boxWidth=width*.51,y=height*.013;
+  const fill=rgb(parseInt(background.slice(1,3),16)/255,parseInt(background.slice(3,5),16)/255,parseInt(background.slice(5,7),16)/255);
+  page.drawRectangle({x:x-2,y:height*.002,width:boxWidth+4,height:height*.070,color:fill});
+  if(label)page.drawImage(label,{x,y:height*.043,width:Math.min(boxWidth,400),height:15});
+  else page.drawText('AI CHECK-IN / Send this PDF to your Agent and say CHECK IN.',{x,y:height*.050,size:Math.min(10,height*.018),font:bold});
+  if(label)page.drawText('AI CHECK-IN / Send this PDF to your Agent and say CHECK IN.',{x,y:height*.050,size:8,font,opacity:0});
+  let size=Math.min(10,height*.016);while(font.widthOfTextAtSize(url,size)>boxWidth)size-=.25;
+  if(size<4)throw new Error('链接区域过窄，请使用横版登机牌');
+  page.drawText(url,{x,y,size,font,color:rgb(.05,.05,.05)});
+  const link=out.context.obj({Type:'Annot',Subtype:'Link',Rect:[x,y-2,x+boxWidth,y+size+3],Border:[0,0,0],A:{Type:'Action',S:'URI',URI:PDFString.of(url)}});
   page.node.set(PDFName.of('Annots'),out.context.obj([out.context.register(link)]));
  }
- out.setTitle('Personal boarding invitation');out.setSubject('Personal check-in link in footer');
+ out.setTitle('Personal boarding invitation');out.setSubject('Personal check-in link on main boarding pass');
  return out.save();
 }
