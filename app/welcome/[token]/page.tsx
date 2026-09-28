@@ -1,0 +1,5 @@
+import {resolveTicket,time} from '@/lib/server';
+import WelcomeMedia from './media';
+export const dynamic='force-dynamic';
+export const metadata={title:'欢迎入场 · AI 搭子已就位',referrer:'no-referrer',robots:{index:false,follow:false}};
+export default async function Welcome({params}:{params:Promise<{token:string}>}){const {token}=await params;try{const p=await resolveTicket(token,true);return <main className="ceremony welcome-screen"><div className="wordmark">A / I <span>QUARTERLY GATHERING</span></div><p className="eyebrow">HUMAN × AI · BETTER TOGETHER</p><div className="orbit" aria-hidden="true"><span>A</span><span>I</span></div><h1>{p.name}，欢迎入场。</h1><p className="welcome-sub">你的 AI 搭子已就位，下一程，一起进化。</p><div className="checkin-seal">✓ 已签到 <span>{time(p.checked_at)} · 北京时间</span></div><WelcomeMedia token={token} type={p.media_type}/><footer>{p.title}<span>这一刻，属于你与 AI。</span></footer></main>}catch(e){return <main className="ceremony"><article className="invite-panel"><h1>欢迎链接暂不可用</h1><p>{e instanceof Error?e.message:'请联系会务'}</p><p>可将原邀请函重新发送给 Agent 查询欢迎入口。</p></article></main>}}
