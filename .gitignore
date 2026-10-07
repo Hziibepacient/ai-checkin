@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,6 +23,7 @@
 *.pem
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -49,3 +50,19 @@ next-env.d.ts
 .dev.vars.*
 !.env.example
 *.tsbuildinfo
+
+# Disposable caches and temporary files
+/.cache/
+/.npm/
+/.pnpm-store/
+/.turbo/
+/.vite/
+/tmp/
+/temp/
+
+# OS and editor temporary files
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
